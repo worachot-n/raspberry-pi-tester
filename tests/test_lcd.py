@@ -26,10 +26,10 @@ def run_test(config: dict) -> bool:
     try:
         # Test 1: All 4 rows
         print("[LCD] Test 1: Printing to all 4 rows...")
-        lcd.print_line(0, "=== LCD TEST PASS ===")
-        lcd.print_line(1, "Row 1: Hello World!")
-        lcd.print_line(2, "Row 2: 1234567890  ")
-        lcd.print_line(3, "Row 3: ABCDEFGHIJ  ")
+        lcd.print_line(0, "== LCD TEST PASS")
+        lcd.print_line(1, "Row1: Hello Wrld")
+        lcd.print_line(2, "Row2: 1234567890")
+        lcd.print_line(3, "Row3: ABCDEFGHIJ")
         time.sleep(3)
 
         # Test 2: Cursor positioning
@@ -52,7 +52,7 @@ def run_test(config: dict) -> bool:
 
         # Done
         lcd.clear()
-        lcd.print_line(0, "     TEST DONE      ")
+        lcd.print_line(0, "   TEST DONE    ")
         time.sleep(1)
 
         answer = input("\n[LCD] Did all 4 rows display correctly and backlight toggle? [y/n]: ").strip().lower()

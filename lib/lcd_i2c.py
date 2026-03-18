@@ -26,18 +26,15 @@ _LCD_DISPLAY_ON  = 0x0C  # Display on, cursor off, blink off
 _LCD_FUNCTION_4B = 0x28  # 4-bit, 2-line, 5×8 font
 _LCD_SET_DDRAM   = 0x80  # OR with DDRAM address
 
-# Row start addresses for 20×4 LCD
-_ROW_OFFSETS = [0x00, 0x40, 0x14, 0x54]
-
-
 class LcdI2C:
-    """20×4 HD44780 LCD driver via PCF8574 I2C backpack."""
+    """HD44780 LCD driver via PCF8574 I2C backpack."""
 
     def __init__(self, bus: int = 1, address: int = 0x27,
-                 rows: int = 4, cols: int = 20):
+                 rows: int = 4, cols: int = 16):
         self._addr = address
         self._rows = rows
         self._cols = cols
+        self._row_offsets = [0x00, 0x40, cols, 0x40 + cols]
         self._bl = _BL  # backlight on by default
         self._bus = smbus2.SMBus(bus)
         self.init()
@@ -117,7 +114,7 @@ class LcdI2C:
     def set_cursor(self, row: int, col: int):
         row = max(0, min(row, self._rows - 1))
         col = max(0, min(col, self._cols - 1))
-        self._command(_LCD_SET_DDRAM | (_ROW_OFFSETS[row] + col))
+        self._command(_LCD_SET_DDRAM | (self._row_offsets[row] + col))
 
     def print(self, text: str):
         for ch in text:
