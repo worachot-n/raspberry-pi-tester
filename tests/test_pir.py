@@ -32,6 +32,16 @@ def _ts() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
 
+def _wait_for_level(pin: int, level: int, timeout_ms: int) -> bool:
+    """Poll pin until it reaches `level` or timeout. Returns True if level reached."""
+    deadline = time.monotonic() + timeout_ms / 1000.0
+    while time.monotonic() < deadline:
+        if GPIO.input(pin) == level:
+            return True
+        time.sleep(0.02)
+    return False
+
+
 class _State:
     """Manages relay outputs and LCD log during the PIR test."""
 
@@ -56,14 +66,14 @@ class _State:
 
     def _push_log(self, msg: str):
         """Add a line to the rolling log and refresh rows 1-3."""
-        self._log.insert(0, msg[:20])
+        self._log.insert(0, msg[:16])
         self._log = self._log[:3]           # keep last 3 entries
         for row in range(1, 4):
             line = self._log[row - 1] if (row - 1) < len(self._log) else ""
             self._lcd.print_line(row, line)
 
     def _refresh_header(self):
-        self._lcd.print_line(0, f"PIR TEST  det:{self._count}/{_TARGET_COUNT}")
+        self._lcd.print_line(0, f"PIR det:{self._count}/{_TARGET_COUNT}")
 
     # -- State transitions -------------------------------------------------- #
 
@@ -134,8 +144,8 @@ def run_test(config: dict) -> bool:
         GPIO.setup(pir_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
         # Warm-up
-        lcd.print_line(0, "PIR TEST  warming..")
-        lcd.print_line(1, f"Wait {_WARMUP_SECS}s for sensor")
+        lcd.print_line(0, "PIR warming...")
+        lcd.print_line(1, f"Wait {_WARMUP_SECS}s...")
         lcd.print_line(2, "")
         lcd.print_line(3, "")
         print(f"[PIR] Warming up — wait {_WARMUP_SECS} seconds...")
@@ -147,15 +157,14 @@ def run_test(config: dict) -> bool:
         passed = False
         while state._count < _TARGET_COUNT:
             # Wait for motion ON (rising edge)
-            result = GPIO.wait_for_edge(pir_pin, GPIO.RISING, timeout=_TIMEOUT_MS)
-            if result is None:
+            if not _wait_for_level(pir_pin, GPIO.HIGH, _TIMEOUT_MS):
                 print(f"[PIR] Timeout — {state._count}/{_TARGET_COUNT} detections.")
                 break
 
             state.motion_detected()
 
             # Wait for motion OFF (falling edge) — max 10 s
-            GPIO.wait_for_edge(pir_pin, GPIO.FALLING, timeout=10_000)
+            _wait_for_level(pir_pin, GPIO.LOW, 10_000)
             state.motion_stopped()
 
             if state._count < _TARGET_COUNT:

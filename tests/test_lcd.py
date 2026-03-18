@@ -1,8 +1,8 @@
 """Test: LCD 16×4 via I2C (HD44780 + PCF8574 at 0x27)."""
 
-import time
-import sys
 import os
+import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.lcd_i2c import LcdI2C
@@ -11,9 +11,9 @@ from lib.lcd_i2c import LcdI2C
 def run_test(config: dict) -> bool:
     lcd_cfg = config["lcd"]
     address = lcd_cfg["address"]
-    bus     = lcd_cfg["bus"]
-    rows    = lcd_cfg["rows"]
-    cols    = lcd_cfg["cols"]
+    bus = lcd_cfg["bus"]
+    rows = lcd_cfg["rows"]
+    cols = lcd_cfg["cols"]
 
     print(f"\n[LCD] Initialising LCD at I2C bus {bus}, address 0x{address:02X}")
 
@@ -35,7 +35,7 @@ def run_test(config: dict) -> bool:
         # Test 2: Cursor positioning
         print("[LCD] Test 2: Cursor positioning...")
         lcd.clear()
-        lcd.set_cursor(0, 8)
+        lcd.set_cursor(0, 5)
         lcd.print("MIDDLE")
         lcd.set_cursor(3, 13)
         lcd.print("END")
@@ -55,7 +55,13 @@ def run_test(config: dict) -> bool:
         lcd.print_line(0, "   TEST DONE    ")
         time.sleep(1)
 
-        answer = input("\n[LCD] Did all 4 rows display correctly and backlight toggle? [y/n]: ").strip().lower()
+        answer = (
+            input(
+                "\n[LCD] Did all 4 rows display correctly and backlight toggle? [y/n]: "
+            )
+            .strip()
+            .lower()
+        )
         return answer == "y"
 
     except KeyboardInterrupt:
