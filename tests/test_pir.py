@@ -16,7 +16,7 @@ LCD layout (16x4):
 import time
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import RPi.GPIO as GPIO
 
@@ -26,10 +26,11 @@ from lib.lcd_i2c import LcdI2C
 _WARMUP_SECS  = 5
 _TARGET_COUNT = 3
 _TIMEOUT_MS   = 30_000
+_TZ           = timezone(timedelta(hours=7))  # UTC+7 Bangkok
 
 
 def _ts() -> str:
-    return datetime.now().strftime("%H:%M:%S")
+    return datetime.now(_TZ).strftime("%H:%M:%S")
 
 
 def _wait_for_level(pin: int, level: int, timeout_ms: int) -> bool:
@@ -141,7 +142,7 @@ def run_test(config: dict) -> bool:
     state = _State(relay_pins, lcd)
 
     try:
-        GPIO.setup(pir_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(pir_pin, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
 
         # Warm-up
         lcd.print_line(0, "PIR warming...")
@@ -150,6 +151,7 @@ def run_test(config: dict) -> bool:
         lcd.print_line(3, "")
         print(f"[PIR] Warming up — wait {_WARMUP_SECS} seconds...")
         time.sleep(_WARMUP_SECS)
+        print(f"[PIR] Pin {pir_pin} level: {GPIO.input(pir_pin)} (expect 0=idle, 1=motion)")
 
         state.standby()
         print(f"[PIR] Waiting for {_TARGET_COUNT} motion events (30 s timeout each)...")
