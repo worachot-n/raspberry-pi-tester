@@ -1,4 +1,4 @@
-"""Test: LCD 20×4 via I2C (HD44780 + PCF8574 at 0x27)."""
+"""Test: LCD 16×4 via I2C (HD44780 + PCF8574 at 0x27)."""
 
 import time
 import sys
@@ -37,7 +37,7 @@ def run_test(config: dict) -> bool:
         lcd.clear()
         lcd.set_cursor(0, 8)
         lcd.print("MIDDLE")
-        lcd.set_cursor(3, 14)
+        lcd.set_cursor(3, 13)
         lcd.print("END")
         time.sleep(2)
 

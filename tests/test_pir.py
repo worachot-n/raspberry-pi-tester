@@ -6,7 +6,7 @@ Relay states:
   RELAY2 ON  — motion detected
   RELAY3 ON  — motion stopped, held briefly then clears back to standby
 
-LCD layout (20x4):
+LCD layout (16x4):
   Row 0: "PIR TEST"  +  detection count
   Row 1: last status line
   Row 2: second-last status line

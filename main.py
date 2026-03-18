@@ -45,7 +45,7 @@ _TESTS = [
     ("Relays   (GPIO 20, 21, 12)",    test_relay.run_test),
     ("PIR      (GPIO 23)",            test_pir.run_test),
     ("TM1637   (H0-H4, 5 displays)",  test_tm1637.run_test),
-    ("LCD 20x4 (I2C 0x27)",          test_lcd.run_test),
+    ("LCD 16x4 (I2C 0x27)",          test_lcd.run_test),
     ("Camera   (picamera2)",          test_camera.run_test),
 ]
 

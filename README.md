@@ -17,7 +17,7 @@ Interactive CLI to test all GPIO-connected hardware on a Raspberry Pi 4B.
 | TM1637 H2 | CLK 5 / DIO 6 |
 | TM1637 H3 | CLK 13 / DIO 19 |
 | TM1637 H4 | CLK 26 / DIO 16 |
-| LCD 20×4 | I2C bus 1, address 0x27 |
+| LCD 16×4 | I2C bus 1, address 0x27 |
 | Camera | CSI |
 
 ---
@@ -115,7 +115,7 @@ uv run python main.py
   1. Test Relays   (GPIO 20, 21, 12)
   2. Test PIR      (GPIO 23)
   3. Test TM1637   (H0-H4, 5 displays)
-  4. Test LCD 20x4 (I2C 0x27)
+  4. Test LCD 16x4 (I2C 0x27)
   5. Test Camera   (picamera2)
   --------------------------------------
   6. Run ALL tests sequentially
@@ -147,7 +147,7 @@ Test auto-passes after 3 motion detections; fails on 30 s timeout.
 Each of the 5 displays cycles: `8888` → `1234` → `HELO` → `0000` → `12:34` → blank.
 Confirm each display visually.
 
-### 4. LCD 20×4
+### 4. LCD 16×4
 Fills all 4 rows, tests cursor positioning, and toggles the backlight.
 Confirm visually.
 
