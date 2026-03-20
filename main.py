@@ -6,53 +6,68 @@ Run: uv run python main.py
 import os
 import sys
 
-from dotenv import load_dotenv
 import RPi.GPIO as GPIO
+from dotenv import load_dotenv
 
-from tests import test_relay, test_pir, test_tm1637, test_lcd, test_camera
+from tests import test_camera, test_lcd, test_pir, test_relay, test_tm1637
 
 
 def build_config() -> dict:
     load_dotenv()
     return {
         "relays": [
-            int(os.getenv("RELAY_1", 20)),
-            int(os.getenv("RELAY_2", 21)),
+            int(os.getenv("RELAY_1", 21)),
+            int(os.getenv("RELAY_2", 20)),
             int(os.getenv("RELAY_3", 12)),
         ],
         "pir_pin": int(os.getenv("PIR_SENSOR_PIN", 23)),
         "tm1637": [
-            {"clk": int(os.getenv("TM1637_H0_CLK",  4)), "dio": int(os.getenv("TM1637_H0_DIO", 17))},
-            {"clk": int(os.getenv("TM1637_H1_CLK", 27)), "dio": int(os.getenv("TM1637_H1_DIO", 22))},
-            {"clk": int(os.getenv("TM1637_H2_CLK",  5)), "dio": int(os.getenv("TM1637_H2_DIO",  6))},
-            {"clk": int(os.getenv("TM1637_H3_CLK", 13)), "dio": int(os.getenv("TM1637_H3_DIO", 19))},
-            {"clk": int(os.getenv("TM1637_H4_CLK", 26)), "dio": int(os.getenv("TM1637_H4_DIO", 16))},
+            {
+                "clk": int(os.getenv("TM1637_H0_CLK", 4)),
+                "dio": int(os.getenv("TM1637_H0_DIO", 17)),
+            },
+            {
+                "clk": int(os.getenv("TM1637_H1_CLK", 27)),
+                "dio": int(os.getenv("TM1637_H1_DIO", 22)),
+            },
+            {
+                "clk": int(os.getenv("TM1637_H2_CLK", 5)),
+                "dio": int(os.getenv("TM1637_H2_DIO", 6)),
+            },
+            {
+                "clk": int(os.getenv("TM1637_H3_CLK", 13)),
+                "dio": int(os.getenv("TM1637_H3_DIO", 19)),
+            },
+            {
+                "clk": int(os.getenv("TM1637_H4_CLK", 26)),
+                "dio": int(os.getenv("TM1637_H4_DIO", 16)),
+            },
         ],
         "lcd": {
             "address": int(os.getenv("LCD_I2C_ADDRESS", "0x27"), 16),
-            "bus":     int(os.getenv("LCD_I2C_BUS",  1)),
-            "rows":    int(os.getenv("LCD_ROWS",      4)),
-            "cols":    int(os.getenv("LCD_COLS",     20)),
+            "bus": int(os.getenv("LCD_I2C_BUS", 1)),
+            "rows": int(os.getenv("LCD_ROWS", 4)),
+            "cols": int(os.getenv("LCD_COLS", 20)),
         },
         "camera": {
-            "width":  1920,
+            "width": 1920,
             "height": 1080,
         },
     }
 
 
 _TESTS = [
-    ("Relays   (GPIO 20, 21, 12)",    test_relay.run_test),
-    ("PIR      (GPIO 23)",            test_pir.run_test),
-    ("TM1637   (H0-H4, 5 displays)",  test_tm1637.run_test),
-    ("LCD 16x4 (I2C 0x27)",          test_lcd.run_test),
-    ("Camera   (picamera2)",          test_camera.run_test),
+    ("Relays   (GPIO 20, 21, 12)", test_relay.run_test),
+    ("PIR      (GPIO 23)", test_pir.run_test),
+    ("TM1637   (H0-H4, 5 displays)", test_tm1637.run_test),
+    ("LCD 16x4 (I2C 0x27)", test_lcd.run_test),
+    ("Camera   (picamera2)", test_camera.run_test),
 ]
 
 _DISPLAY_TESTS = [
-    ("Relays   (GPIO 20, 21, 12)",   test_relay.run_test),
+    ("Relays   (GPIO 20, 21, 12)", test_relay.run_test),
     ("TM1637   (H0-H4, 5 displays)", test_tm1637.run_test),
-    ("LCD 16x4 (I2C 0x27)",         test_lcd.run_test),
+    ("LCD 16x4 (I2C 0x27)", test_lcd.run_test),
 ]
 
 
@@ -109,7 +124,9 @@ def main():
     GPIO.setmode(GPIO.BCM)
 
     for pin in config["relays"]:
-        GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)   # relays OFF at startup (active-high)
+        GPIO.setup(
+            pin, GPIO.OUT, initial=GPIO.HIGH
+        )  # relays OFF at startup (active-low)
 
     try:
         while True:

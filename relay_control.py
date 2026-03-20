@@ -9,16 +9,16 @@ Exit: 0 or Ctrl+C  (all relays turned OFF on exit)
 import os
 import sys
 
-from dotenv import load_dotenv
 import RPi.GPIO as GPIO
+from dotenv import load_dotenv
 
 load_dotenv()
 
 
 def build_pins() -> list[tuple[int, str]]:
     return [
-        (int(os.getenv("RELAY_1", 20)), "Relay 1  (GPIO 20)"),
-        (int(os.getenv("RELAY_2", 21)), "Relay 2  (GPIO 21)"),
+        (int(os.getenv("RELAY_1", 21)), "Relay 1  (GPIO 21)"),
+        (int(os.getenv("RELAY_2", 20)), "Relay 2  (GPIO 20)"),
         (int(os.getenv("RELAY_3", 12)), "Relay 3  (GPIO 12)"),
     ]
 
@@ -27,16 +27,16 @@ def setup(pins: list[int]):
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
     for pin in pins:
-        GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)  # all OFF at startup (active-high)
+        GPIO.setup(pin, GPIO.OUT, initial=GPIO.HIGH)  # all OFF at startup (active-low)
 
 
 def set_relay(pin: int, on: bool):
-    GPIO.output(pin, GPIO.HIGH if on else GPIO.LOW)
+    GPIO.output(pin, GPIO.LOW if on else GPIO.HIGH)
 
 
 def all_off(pins: list[int]):
     for pin in pins:
-        GPIO.output(pin, GPIO.LOW)
+        GPIO.output(pin, GPIO.HIGH)
 
 
 def print_menu(relays: list[tuple[int, str]], states: list[bool]):
@@ -57,7 +57,7 @@ def print_menu(relays: list[tuple[int, str]], states: list[bool]):
 
 def main():
     relays = build_pins()
-    pins   = [p for p, _ in relays]
+    pins = [p for p, _ in relays]
     states = [False] * len(relays)
 
     setup(pins)
@@ -71,8 +71,8 @@ def main():
                 break
 
             elif choice in ("1", "2", "3"):
-                idx  = int(choice) - 1
-                pin  = pins[idx]
+                idx = int(choice) - 1
+                pin = pins[idx]
                 _, label = relays[idx]
                 action = input(f"  {label} — enter ON or OFF: ").strip().upper()
                 if action == "ON":
