@@ -10,6 +10,8 @@ import socket
 import subprocess
 import sys
 import threading
+import time
+from datetime import datetime, timezone, timedelta
 
 import RPi.GPIO as GPIO
 from dotenv import load_dotenv
@@ -53,6 +55,7 @@ def build_config() -> dict:
             "rows":    int(os.getenv("LCD_ROWS", 4)),
             "cols":    int(os.getenv("LCD_COLS", 16)),
         },
+        "button_pin": int(os.getenv("BUTTON_PIN", 24)),
     }
 
 
@@ -106,12 +109,13 @@ def init_camera() -> bool:
     try:
         _camera = Picamera2()
         cfg = _camera.create_video_configuration(
-            main={"size": (2304, 1296), "format": "RGB888"}
+            main={"size": (4608, 2592), "format": "RGB888"},
+            controls={"FrameDurationLimits": (100000, 100000)},  # 10 fps
         )
         _camera.configure(cfg)
         _stream_output = StreamOutput()
         _camera.start_recording(JpegEncoder(), FileOutput(_stream_output))
-        print("[CAMERA] Recording started (2304×1296)")
+        print("[CAMERA] Recording started (4608×2592 @ 10fps)")
         return True
     except Exception as e:
         print(f"[CAMERA] Failed: {e}")
@@ -136,10 +140,31 @@ def generate_frames():
 # Hardware state
 # ---------------------------------------------------------------------------
 
+_TZ = timezone(timedelta(hours=7))  # UTC+7 Bangkok
+
 _config: dict = {}
 _relay_states: list[bool] = [False, False, False]   # False = OFF
 _displays: list[TM1637] = []
 _lcd: LcdI2C | None = None
+_button_state: dict = {"pressed": False, "count": 0, "last_ts": "—"}
+
+
+def _button_monitor():
+    pin = _config["button_pin"]
+    GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    was_pressed = False
+    while True:
+        pressed = GPIO.input(pin) == GPIO.LOW   # active-low (pull-up → GND)
+        if pressed and not was_pressed:
+            time.sleep(0.02)                    # 20 ms debounce
+            if GPIO.input(pin) == GPIO.LOW:
+                _button_state["pressed"] = True
+                _button_state["count"]  += 1
+                _button_state["last_ts"] = datetime.now(_TZ).strftime("%H:%M:%S")
+        elif not pressed and was_pressed:
+            _button_state["pressed"] = False
+        was_pressed = pressed
+        time.sleep(0.01)
 
 
 def setup_gpio():
@@ -246,6 +271,14 @@ _HTML = """\
   .tm-row button:active{{background:#2563eb}}
   #tm-status{{font-size:.8rem;color:#6af;margin-top:6px;min-height:1em}}
 
+  /* ── push button status ── */
+  .btn-status{{display:flex;align-items:center;gap:10px;margin-bottom:8px;
+               font-size:1.1rem;font-weight:600}}
+  .btn-dot{{width:18px;height:18px;border-radius:50%;background:#555;
+            flex-shrink:0;transition:background .1s}}
+  .btn-dot.pressed{{background:#facc15;box-shadow:0 0 10px #ca8a04}}
+  .btn-meta{{font-size:.8rem;color:#aaa}}
+
   /* ── reset ── */
   .reset-btn{{width:100%;padding:12px;border:none;border-radius:8px;
               background:#dc2626;color:#fff;font-size:.95rem;font-weight:600;
@@ -283,6 +316,18 @@ _HTML = """\
 
   <!-- RIGHT: controls -->
   <section class="col-right">
+
+    <div class="card">
+      <h2>Push Button (GPIO {btn_pin})</h2>
+      <div class="btn-status">
+        <span class="btn-dot" id="btn-dot"></span>
+        <span id="btn-label">IDLE</span>
+      </div>
+      <div class="btn-meta">
+        Presses: <strong id="btn-count">0</strong>
+        &nbsp;|&nbsp; Last: <strong id="btn-last">—</strong>
+      </div>
+    </div>
 
     <div class="card">
       <h2>Relays</h2>
@@ -372,6 +417,19 @@ async function resetAll() {{
 document.getElementById('tm-input').addEventListener('keydown', e => {{
   if (e.key === 'Enter') setDisplays();
 }});
+
+async function pollButton() {{
+  const res = await fetch('/button');
+  if (!res.ok) return;
+  const d = await res.json();
+  const dot = document.getElementById('btn-dot');
+  dot.className = 'btn-dot ' + (d.pressed ? 'pressed' : '');
+  document.getElementById('btn-label').textContent = d.pressed ? 'PRESSED' : 'IDLE';
+  document.getElementById('btn-count').textContent = d.count;
+  document.getElementById('btn-last').textContent  = d.last_ts;
+}}
+setInterval(pollButton, 150);
+pollButton();
 </script>
 </body>
 </html>
@@ -380,7 +438,7 @@ document.getElementById('tm-input').addEventListener('keydown', e => {{
 
 @app.route("/")
 def index():
-    return _HTML.format(ssid=_ssid, ip=_ip)
+    return _HTML.format(ssid=_ssid, ip=_ip, btn_pin=_config["button_pin"])
 
 
 @app.route("/stream")
@@ -418,6 +476,11 @@ def tm1637():
     return jsonify(number=num)
 
 
+@app.route("/button")
+def button():
+    return jsonify(_button_state)
+
+
 @app.route("/status")
 def status():
     return jsonify(relays=_relay_states)
@@ -446,6 +509,8 @@ def main():
     print(f"[NET]  IP={_ip}  SSID={_ssid}")
 
     setup_gpio()
+    threading.Thread(target=_button_monitor, daemon=True).start()
+    print(f"[BTN] Monitoring GPIO {_config['button_pin']} (pull-up, active LOW)")
     init_displays()
     init_lcd(_ip, _ssid)
     init_camera()
