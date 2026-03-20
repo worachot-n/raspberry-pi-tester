@@ -29,6 +29,8 @@ raspberry-pi-tester/
 ├── pyproject.toml        # uv project & dependencies
 ├── .env                  # pin / I2C configuration
 ├── main.py               # interactive test menu
+├── pir_analyzer.py       # standalone PIR motion analyser (configurable session)
+├── camera_stream.py      # Flask MJPEG streamer + LCD status display
 ├── lib/
 │   ├── tm1637.py         # TM1637 bit-bang driver
 │   └── lcd_i2c.py        # HD44780 over PCF8574 I2C
@@ -94,6 +96,12 @@ packages inside the venv.
 uv sync
 ```
 
+`camera_stream.py` also requires Flask (not in `pyproject.toml` by default):
+
+```bash
+uv pip install flask
+```
+
 ### 7. Verify
 
 ```bash
@@ -103,6 +111,8 @@ uv run python -c "import RPi.GPIO; import smbus2; import picamera2; print('OK')"
 ---
 
 ## Run
+
+### Test suite
 
 ```bash
 uv run python main.py
@@ -123,6 +133,29 @@ uv run python main.py
   0. Exit
 ==========================================
 ```
+
+### PIR Analyzer
+
+Standalone configurable motion-detection session with live event log and summary:
+
+```bash
+uv run python pir_analyzer.py
+```
+
+Prompts for GPIO pin, warm-up time, poll interval, debounce reads, and session
+duration. Prints a live table of motion events (timestamp, duration, gap) and a
+statistics summary when the session ends or is stopped with Ctrl+C.
+
+### Camera Stream
+
+Flask MJPEG streamer that displays the live camera feed in a browser and shows
+the device IP on the LCD:
+
+```bash
+uv run python camera_stream.py
+```
+
+Open `http://<device-ip>:5000` in any browser on the same network.
 
 ---
 
@@ -178,7 +211,7 @@ TM1637_H4_CLK=26
 TM1637_H4_DIO=16
 LCD_I2C_ADDRESS=0x27
 LCD_I2C_BUS=1
-LCD_COLS=20
+LCD_COLS=16
 LCD_ROWS=4
 ```
 
@@ -196,8 +229,10 @@ sudo i2cdetect -y 1
 |---------|-----|
 | `ImportError: RPi.GPIO` | `sudo apt install -y python3-rpi.gpio` |
 | `ImportError: picamera2` | `sudo apt install -y python3-picamera2` |
+| `ImportError: flask` | `uv pip install flask` |
 | LCD shows nothing | Run `i2cdetect -y 1`; update `LCD_I2C_ADDRESS` in `.env` |
 | LCD shows blocks only | Adjust the contrast pot on the I2C backpack |
 | Camera `RuntimeError` | Enable camera in `raspi-config`; reseat ribbon cable |
+| Camera stream returns 503 | Install Flask: `uv pip install flask` |
 | TM1637 shows nothing | Check CLK/DIO wiring; verify 3.3 V on VCC |
 | PIR never triggers | Allow 30–60 s warm-up; check 5 V on VCC |
