@@ -99,6 +99,9 @@ def main():
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
 
+    for pin in config["relays"]:
+        GPIO.setup(pin, GPIO.OUT, initial=GPIO.HIGH)  # relays OFF at startup (active-low)
+
     try:
         while True:
             print_menu()

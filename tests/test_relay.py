@@ -10,13 +10,13 @@ def run_test(config: dict) -> bool:
 
     try:
         for pin in pins:
-            GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)
+            GPIO.setup(pin, GPIO.OUT, initial=GPIO.HIGH)  # HIGH = relay OFF (active-low)
 
         for i, pin in enumerate(pins, start=1):
             print(f"  Relay {i} (GPIO {pin}): ON  ", end="", flush=True)
-            GPIO.output(pin, GPIO.HIGH)
+            GPIO.output(pin, GPIO.LOW)   # LOW = relay ON  (active-low)
             time.sleep(1.0)
-            GPIO.output(pin, GPIO.LOW)
+            GPIO.output(pin, GPIO.HIGH)  # HIGH = relay OFF (active-low)
             print("→ OFF")
             time.sleep(0.5)
 
