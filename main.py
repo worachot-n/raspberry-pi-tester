@@ -49,6 +49,12 @@ _TESTS = [
     ("Camera   (picamera2)",          test_camera.run_test),
 ]
 
+_DISPLAY_TESTS = [
+    ("Relays   (GPIO 20, 21, 12)",   test_relay.run_test),
+    ("TM1637   (H0-H4, 5 displays)", test_tm1637.run_test),
+    ("LCD 16x4 (I2C 0x27)",         test_lcd.run_test),
+]
+
 
 def print_menu():
     print()
@@ -59,6 +65,7 @@ def print_menu():
         print(f"  {i}. Test {name}")
     print("  " + "-" * 38)
     print("  6. Run ALL tests sequentially")
+    print("  7. Run Relay + TM1637 + LCD")
     print("  " + "-" * 38)
     print("  0. Exit")
     print("=" * 42)
@@ -79,9 +86,11 @@ def print_summary(results: dict):
     print("=" * 42)
 
 
-def run_all(config: dict):
+def run_all(config: dict, tests=None):
+    if tests is None:
+        tests = _TESTS
     results = {}
-    for name, fn in _TESTS:
+    for name, fn in tests:
         print(f"\n{'─' * 42}")
         print(f"  Running: {name}")
         print(f"{'─' * 42}")
@@ -100,7 +109,7 @@ def main():
     GPIO.setmode(GPIO.BCM)
 
     for pin in config["relays"]:
-        GPIO.setup(pin, GPIO.OUT, initial=GPIO.HIGH)  # relays OFF at startup (active-low)
+        GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)   # relays OFF at startup (active-high)
 
     try:
         while True:
@@ -123,8 +132,10 @@ def main():
                     print(f"\n  ERROR: {e}")
             elif choice == "6":
                 run_all(config)
+            elif choice == "7":
+                run_all(config, _DISPLAY_TESTS)
             else:
-                print("  Invalid option -- enter 0-6.")
+                print("  Invalid option -- enter 0-7.")
 
     except KeyboardInterrupt:
         print("\nInterrupted.")
