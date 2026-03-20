@@ -106,12 +106,12 @@ def init_camera() -> bool:
     try:
         _camera = Picamera2()
         cfg = _camera.create_video_configuration(
-            main={"size": (1920, 1080), "format": "RGB888"}
+            main={"size": (2304, 1296), "format": "RGB888"}
         )
         _camera.configure(cfg)
         _stream_output = StreamOutput()
         _camera.start_recording(JpegEncoder(), FileOutput(_stream_output))
-        print("[CAMERA] Recording started (1920×1080)")
+        print("[CAMERA] Recording started (2304×1296)")
         return True
     except Exception as e:
         print(f"[CAMERA] Failed: {e}")
@@ -218,14 +218,24 @@ _HTML = """\
   .card h2{{font-size:.95rem;color:#adf;margin-bottom:12px}}
 
   /* ── camera ── */
-  #cam{{width:100%;border-radius:6px;display:block;background:#000}}
+  .cam-wrap{{position:relative;background:#000;border-radius:6px;overflow:hidden}}
+  #cam{{width:100%;display:block;transform:rotate(180deg)}}
+  .fullscreen-btn{{position:absolute;top:8px;right:8px;padding:6px 10px;
+                   border:none;border-radius:6px;background:rgba(0,0,0,.55);
+                   color:#fff;font-size:.8rem;cursor:pointer;backdrop-filter:blur(4px);
+                   transition:background .15s}}
+  .fullscreen-btn:hover{{background:rgba(255,255,255,.2)}}
 
   /* ── relays ── */
   .relay-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}}
-  .relay-btn{{padding:12px 0;border:none;border-radius:8px;font-size:.9rem;
+  .relay-btn{{padding:10px 0 6px;border:none;border-radius:8px;font-size:.9rem;
               font-weight:600;cursor:pointer;transition:background .15s;width:100%}}
   .relay-btn.off{{background:#333;color:#aaa}}
   .relay-btn.on{{background:#22c55e;color:#fff}}
+  .relay-indicator{{display:inline-block;width:10px;height:10px;border-radius:50%;
+                    margin-bottom:4px;background:#555;transition:background .2s}}
+  .relay-btn.on  .relay-indicator{{background:#86efac;box-shadow:0 0 6px #22c55e}}
+  .relay-btn.off .relay-indicator{{background:#555}}
 
   /* ── tm1637 ── */
   .tm-row{{display:flex;gap:10px}}
@@ -264,7 +274,10 @@ _HTML = """\
   <section class="col-left">
     <div class="card">
       <h2>Camera</h2>
-      <img id="cam" src="/stream" alt="Camera stream">
+      <div class="cam-wrap" id="cam-wrap">
+        <img id="cam" src="/stream" alt="Camera stream">
+        <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Full Screen</button>
+      </div>
     </div>
   </section>
 
@@ -274,9 +287,9 @@ _HTML = """\
     <div class="card">
       <h2>Relays</h2>
       <div class="relay-grid">
-        <button class="relay-btn off" id="r0" onclick="toggleRelay(0)">Relay 1<br><small>OFF</small></button>
-        <button class="relay-btn off" id="r1" onclick="toggleRelay(1)">Relay 2<br><small>OFF</small></button>
-        <button class="relay-btn off" id="r2" onclick="toggleRelay(2)">Relay 3<br><small>OFF</small></button>
+        <button class="relay-btn off" id="r0" onclick="toggleRelay(0)"><span class="relay-indicator"></span><br>Relay 1<br><small>OFF</small></button>
+        <button class="relay-btn off" id="r1" onclick="toggleRelay(1)"><span class="relay-indicator"></span><br>Relay 2<br><small>OFF</small></button>
+        <button class="relay-btn off" id="r2" onclick="toggleRelay(2)"><span class="relay-indicator"></span><br>Relay 3<br><small>OFF</small></button>
       </div>
     </div>
 
@@ -304,8 +317,22 @@ function updateRelayBtn(idx, on) {{
   states[idx] = on;
   const btn = document.getElementById('r' + idx);
   btn.className = 'relay-btn ' + (on ? 'on' : 'off');
-  btn.innerHTML = `Relay ${{idx + 1}}<br><small>${{on ? 'ON' : 'OFF'}}</small>`;
+  btn.innerHTML = `<span class="relay-indicator"></span><br>Relay ${{idx + 1}}<br><small>${{on ? 'ON' : 'OFF'}}</small>`;
 }}
+
+function toggleFullscreen() {{
+  const wrap = document.getElementById('cam-wrap');
+  if (!document.fullscreenElement) {{
+    wrap.requestFullscreen().catch(() => {{}});
+  }} else {{
+    document.exitFullscreen();
+  }}
+}}
+
+document.addEventListener('fullscreenchange', () => {{
+  const btn = document.querySelector('.fullscreen-btn');
+  btn.textContent = document.fullscreenElement ? '✕ Exit Full Screen' : '⛶ Full Screen';
+}});
 
 async function toggleRelay(idx) {{
   const on = !states[idx];
