@@ -199,21 +199,35 @@ _HTML = """\
 <title>Pi Dashboard</title>
 <style>
   *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{background:#111;color:#eee;font-family:system-ui,sans-serif;padding:16px}}
+  body{{background:#111;color:#eee;font-family:system-ui,sans-serif;
+        padding:16px;max-width:1400px;margin-inline:auto}}
   h1{{font-size:1.2rem;margin-bottom:12px;color:#adf}}
-  .status{{background:#1a1a2e;border-radius:8px;padding:10px 14px;margin-bottom:16px;
-           display:flex;gap:24px;font-size:.85rem;color:#8af}}
+
+  /* ── status bar ── */
+  .status-bar{{background:#1a1a2e;border-radius:8px;padding:10px 16px;
+               margin-bottom:16px;display:flex;flex-wrap:wrap;gap:16px;
+               font-size:.85rem;color:#8af}}
+  .status-bar strong{{color:#adf}}
+
+  /* ── two-column grid ── */
+  .layout{{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}}
+
+  /* ── cards ── */
   .card{{background:#1e1e1e;border-radius:10px;padding:16px;margin-bottom:16px}}
+  .card:last-child{{margin-bottom:0}}
   .card h2{{font-size:.95rem;color:#adf;margin-bottom:12px}}
-  /* camera */
+
+  /* ── camera ── */
   #cam{{width:100%;border-radius:6px;display:block;background:#000}}
-  /* relays */
+
+  /* ── relays ── */
   .relay-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}}
   .relay-btn{{padding:12px 0;border:none;border-radius:8px;font-size:.9rem;
-              font-weight:600;cursor:pointer;transition:background .15s}}
+              font-weight:600;cursor:pointer;transition:background .15s;width:100%}}
   .relay-btn.off{{background:#333;color:#aaa}}
   .relay-btn.on{{background:#22c55e;color:#fff}}
-  /* tm1637 */
+
+  /* ── tm1637 ── */
   .tm-row{{display:flex;gap:10px}}
   .tm-row input{{flex:1;padding:10px;border-radius:8px;border:1px solid #444;
                  background:#2a2a2a;color:#eee;font-size:1.1rem;text-align:center}}
@@ -221,41 +235,77 @@ _HTML = """\
                   color:#fff;font-size:.9rem;font-weight:600;cursor:pointer}}
   .tm-row button:active{{background:#2563eb}}
   #tm-status{{font-size:.8rem;color:#6af;margin-top:6px;min-height:1em}}
+
+  /* ── reset ── */
+  .reset-btn{{width:100%;padding:12px;border:none;border-radius:8px;
+              background:#dc2626;color:#fff;font-size:.95rem;font-weight:600;
+              cursor:pointer;transition:background .15s}}
+  .reset-btn:active{{background:#b91c1c}}
+
+  /* ── mobile: single column, info → camera → controls ── */
+  @media (max-width:767px) {{
+    .layout{{grid-template-columns:1fr}}
+    .col-left{{order:1}}
+    .col-right{{order:2}}
+  }}
 </style>
 </head>
 <body>
 <h1>Raspberry Pi Dashboard</h1>
 
-<div class="status">
+<header class="status-bar">
   <span>SSID: <strong>{ssid}</strong></span>
   <span>URL: <strong>http://{ip}:5000</strong></span>
-</div>
+</header>
 
-<div class="card">
-  <h2>Camera</h2>
-  <img id="cam" src="/stream" alt="Camera stream">
-</div>
+<main class="layout">
 
-<div class="card">
-  <h2>Relays</h2>
-  <div class="relay-grid">
-    <button class="relay-btn off" id="r0" onclick="toggleRelay(0)">Relay 1<br><small>OFF</small></button>
-    <button class="relay-btn off" id="r1" onclick="toggleRelay(1)">Relay 2<br><small>OFF</small></button>
-    <button class="relay-btn off" id="r2" onclick="toggleRelay(2)">Relay 3<br><small>OFF</small></button>
-  </div>
-</div>
+  <!-- LEFT: camera -->
+  <section class="col-left">
+    <div class="card">
+      <h2>Camera</h2>
+      <img id="cam" src="/stream" alt="Camera stream">
+    </div>
+  </section>
 
-<div class="card">
-  <h2>TM1637 Displays (all 5)</h2>
-  <div class="tm-row">
-    <input type="number" id="tm-input" min="0" max="9999" placeholder="0 – 9999">
-    <button onclick="setDisplays()">Set</button>
-  </div>
-  <div id="tm-status"></div>
-</div>
+  <!-- RIGHT: controls -->
+  <section class="col-right">
+
+    <div class="card">
+      <h2>Relays</h2>
+      <div class="relay-grid">
+        <button class="relay-btn off" id="r0" onclick="toggleRelay(0)">Relay 1<br><small>OFF</small></button>
+        <button class="relay-btn off" id="r1" onclick="toggleRelay(1)">Relay 2<br><small>OFF</small></button>
+        <button class="relay-btn off" id="r2" onclick="toggleRelay(2)">Relay 3<br><small>OFF</small></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>TM1637 Displays (all 5)</h2>
+      <div class="tm-row">
+        <input type="number" id="tm-input" min="0" max="9999" placeholder="0 – 9999">
+        <button onclick="setDisplays()">Set</button>
+      </div>
+      <div id="tm-status"></div>
+    </div>
+
+    <div class="card">
+      <h2>Reset</h2>
+      <button class="reset-btn" onclick="resetAll()">Reset All (relays OFF + displays blank)</button>
+    </div>
+
+  </section>
+</main>
 
 <script>
 const states = [false, false, false];
+
+function updateRelayBtn(idx, on) {{
+  states[idx] = on;
+  const btn = document.getElementById('r' + idx);
+  btn.className = 'relay-btn ' + (on ? 'on' : 'off');
+  btn.innerHTML = `Relay ${{idx + 1}}<br><small>${{on ? 'ON' : 'OFF'}}</small>`;
+}}
 
 async function toggleRelay(idx) {{
   const on = !states[idx];
@@ -264,12 +314,7 @@ async function toggleRelay(idx) {{
     headers: {{'Content-Type': 'application/json'}},
     body: JSON.stringify({{relay: idx, state: on ? 'on' : 'off'}}),
   }});
-  if (res.ok) {{
-    states[idx] = on;
-    const btn = document.getElementById('r' + idx);
-    btn.className = 'relay-btn ' + (on ? 'on' : 'off');
-    btn.innerHTML = `Relay ${{idx + 1}}<br><small>${{on ? 'ON' : 'OFF'}}</small>`;
-  }}
+  if (res.ok) updateRelayBtn(idx, on);
 }}
 
 async function setDisplays() {{
@@ -286,6 +331,15 @@ async function setDisplays() {{
     body: JSON.stringify({{number: num}}),
   }});
   status.textContent = res.ok ? `Showing ${{num}} on all displays.` : 'Error setting displays.';
+}}
+
+async function resetAll() {{
+  const res = await fetch('/reset', {{method: 'POST'}});
+  if (res.ok) {{
+    for (let i = 0; i < 3; i++) updateRelayBtn(i, false);
+    document.getElementById('tm-input').value = '';
+    document.getElementById('tm-status').textContent = 'Reset — all relays OFF, displays blank.';
+  }}
 }}
 
 document.getElementById('tm-input').addEventListener('keydown', e => {{
@@ -340,6 +394,15 @@ def tm1637():
 @app.route("/status")
 def status():
     return jsonify(relays=_relay_states)
+
+
+@app.route("/reset", methods=["POST"])
+def reset():
+    all_relays_off()
+    for d in _displays:
+        d.clear()
+    print("[RESET] All relays OFF, displays blank")
+    return jsonify(ok=True)
 
 
 # ---------------------------------------------------------------------------
