@@ -155,16 +155,20 @@ _button_state: dict = {"pressed": False, "count": 0, "last_ts": "—"}
 
 
 def capture_image() -> str | None:
-    """Save the current camera frame to DATASET_DIR. Returns filename or None."""
+    """Save the current camera frame (rotated 180°) to DATASET_DIR. Returns filename or None."""
     if _stream_output is None:
         return None
     with _stream_output.condition:
         frame = _stream_output.frame
     if not frame:
         return None
+    from PIL import Image
+    img = Image.open(io.BytesIO(frame)).rotate(180)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
     ts       = datetime.now(_TZ).strftime("%Y%m%d_%H%M%S_%f")[:21]
     filename = f"capture_{ts}.jpg"
-    (DATASET_DIR / filename).write_bytes(frame)
+    (DATASET_DIR / filename).write_bytes(buf.getvalue())
     print(f"[CAPTURE] Saved dataset/{filename}")
     return filename
 
