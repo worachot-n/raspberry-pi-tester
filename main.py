@@ -257,6 +257,9 @@ _DATASET_HTML = """\
   .toolbar button{padding:7px 16px;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer}
   .btn-sel-all{background:#2a2a2a;color:#eee}
   .btn-sel-all:hover{background:#3a3a3a}
+  .btn-dl{background:#1d4ed8;color:#fff}
+  .btn-dl:hover{background:#1e40af}
+  .btn-dl:disabled{background:#444;color:#777;cursor:default}
   .btn-del{background:#dc2626;color:#fff}
   .btn-del:hover{background:#b91c1c}
   .btn-del:disabled{background:#444;color:#777;cursor:default}
@@ -300,6 +303,7 @@ _DATASET_HTML = """\
 <div class="toolbar">
   <button class="btn-sel-all" onclick="toggleSelectAll()">Select All</button>
   <span class="sel-count" id="sel-count">0 selected</span>
+  <button class="btn-dl" id="dl-btn" onclick="downloadSelected()" disabled>Download Selected</button>
   <button class="btn-del" id="del-btn" onclick="deleteSelected()" disabled>Delete Selected</button>
 </div>
 <div class="grid" id="grid"></div>
@@ -355,7 +359,21 @@ function cbClick(e, i) {
 function updateSelCount() {
   const n = document.querySelectorAll('.cb-wrap input:checked').length;
   document.getElementById('sel-count').textContent = n + ' selected';
+  document.getElementById('dl-btn').disabled = n === 0;
   document.getElementById('del-btn').disabled = n === 0;
+}
+
+function downloadSelected() {
+  const selected = [...document.querySelectorAll('.cb-wrap input:checked')]
+    .map(b => files[parseInt(b.id.replace('cb-',''))]);
+  selected.forEach(name => {
+    const a = document.createElement('a');
+    a.href = '/dataset/img/' + name;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
 }
 
 function toggleSelectAll() {
