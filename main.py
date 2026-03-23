@@ -135,6 +135,15 @@ def generate_frames():
         with _stream_output.condition:
             _stream_output.condition.wait()
             frame = _stream_output.frame
+        c = _crop_settings
+        if any(v > 0 for v in c.values()):
+            from PIL import Image
+            img = Image.open(io.BytesIO(frame)).rotate(180)
+            w, h = img.size
+            img = img.crop((c["left"], c["top"], w - c["right"], h - c["bottom"]))
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=85)
+            frame = buf.getvalue()
         yield (
             b"--frame\r\n"
             b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
@@ -152,6 +161,7 @@ _relay_states: list[bool] = [False, False, False]   # False = OFF
 _displays: list[TM1637] = []
 _lcd: LcdI2C | None = None
 _button_state: dict = {"pressed": False, "count": 0, "last_ts": "—"}
+_crop_settings: dict = {"left": 0, "right": 0, "top": 0, "bottom": 0}
 
 
 def capture_image() -> str | None:
@@ -164,6 +174,10 @@ def capture_image() -> str | None:
         return None
     from PIL import Image
     img = Image.open(io.BytesIO(frame)).rotate(180)
+    c = _crop_settings
+    if any(v > 0 for v in c.values()):
+        w, h = img.size
+        img = img.crop((c["left"], c["top"], w - c["right"], h - c["bottom"]))
     buf = io.BytesIO()
     img.save(buf, format="JPEG")
     ts       = datetime.now(_TZ).strftime("%Y%m%d_%H%M%S_%f")[:21]
@@ -499,6 +513,16 @@ _HTML = """\
               cursor:pointer;transition:background .15s}}
   .reset-btn:active{{background:#b91c1c}}
 
+  /* ── crop ── */
+  .crop-grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}}
+  .crop-item{{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:#aaa}}
+  .crop-item input{{padding:8px;border-radius:6px;border:1px solid #444;
+                    background:#2a2a2a;color:#eee;font-size:1rem;text-align:center}}
+  .crop-set-btn{{width:100%;padding:10px;border:none;border-radius:8px;
+                 background:#7c3aed;color:#fff;font-size:.9rem;font-weight:600;cursor:pointer}}
+  .crop-set-btn:active{{background:#6d28d9}}
+  #crop-status{{font-size:.8rem;color:#a78bfa;margin-top:6px;min-height:1em}}
+
   /* ── mobile: single column, info → camera → controls ── */
   @media (max-width:767px) {{
     .layout{{grid-template-columns:1fr}}
@@ -563,6 +587,18 @@ _HTML = """\
         <button onclick="setDisplays()">Set</button>
       </div>
       <div id="tm-status"></div>
+    </div>
+
+    <div class="card">
+      <h2>Crop Settings (px)</h2>
+      <div class="crop-grid">
+        <div class="crop-item"><label>Top</label><input type="number" id="crop-top" min="0" value="0"></div>
+        <div class="crop-item"><label>Bottom</label><input type="number" id="crop-bottom" min="0" value="0"></div>
+        <div class="crop-item"><label>Left</label><input type="number" id="crop-left" min="0" value="0"></div>
+        <div class="crop-item"><label>Right</label><input type="number" id="crop-right" min="0" value="0"></div>
+      </div>
+      <button class="crop-set-btn" onclick="setCrop()">Set Crop</button>
+      <div id="crop-status"></div>
     </div>
 
     <div class="card">
@@ -648,6 +684,43 @@ async function pollButton() {{
 }}
 setInterval(pollButton, 150);
 pollButton();
+
+function applyCropTransform(cropActive) {{
+  document.getElementById('cam').style.transform = cropActive ? 'none' : 'rotate(180deg)';
+}}
+
+async function setCrop() {{
+  const vals = {{
+    top:    parseInt(document.getElementById('crop-top').value)    || 0,
+    bottom: parseInt(document.getElementById('crop-bottom').value) || 0,
+    left:   parseInt(document.getElementById('crop-left').value)   || 0,
+    right:  parseInt(document.getElementById('crop-right').value)  || 0,
+  }};
+  const res = await fetch('/crop', {{
+    method: 'POST',
+    headers: {{'Content-Type': 'application/json'}},
+    body: JSON.stringify(vals),
+  }});
+  if (!res.ok) {{ document.getElementById('crop-status').textContent = 'Error setting crop.'; return; }}
+  const active = Object.values(vals).some(v => v > 0);
+  applyCropTransform(active);
+  const cam = document.getElementById('cam');
+  cam.src = '/stream?t=' + Date.now();
+  document.getElementById('crop-status').textContent = active
+    ? `Crop active — T:${{vals.top}} B:${{vals.bottom}} L:${{vals.left}} R:${{vals.right}}`
+    : 'Crop cleared (full frame).';
+}}
+
+(async () => {{
+  const res = await fetch('/crop');
+  if (!res.ok) return;
+  const d = await res.json();
+  document.getElementById('crop-top').value    = d.top;
+  document.getElementById('crop-bottom').value = d.bottom;
+  document.getElementById('crop-left').value   = d.left;
+  document.getElementById('crop-right').value  = d.right;
+  applyCropTransform(Object.values(d).some(v => v > 0));
+}})();
 </script>
 </body>
 </html>
@@ -711,6 +784,25 @@ def reset():
         d.clear()
     print("[RESET] All relays OFF, displays blank")
     return jsonify(ok=True)
+
+
+@app.route("/crop", methods=["GET"])
+def get_crop():
+    return jsonify(_crop_settings)
+
+
+@app.route("/crop", methods=["POST"])
+def set_crop_route():
+    global _crop_settings
+    data = request.get_json(force=True)
+    for key in ("left", "right", "top", "bottom"):
+        try:
+            val = max(0, int(data.get(key, 0)))
+        except (ValueError, TypeError):
+            val = 0
+        _crop_settings[key] = val
+    print(f"[CROP] {_crop_settings}")
+    return jsonify(_crop_settings)
 
 
 @app.route("/dataset")
